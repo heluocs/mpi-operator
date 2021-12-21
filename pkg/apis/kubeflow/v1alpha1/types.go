@@ -25,8 +25,8 @@ import (
 type MPIJob struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              MPIJobSpec   `json:"spec,omitempty"`
-	Status            MPIJobStatus `json:"status,omitempty"`
+	Spec              MPIJobSpec `json:"spec,omitempty"`
+	Status            JobStatus  `json:"status,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -68,28 +68,21 @@ type MPIJobSpec struct {
 	// +optional
 	Replicas *int32 `json:"replicas,omitempty"`
 
+	// CleanPodPolicy defines the policy that whether to kill pods after the job completes.
+	// Defaults to None.
+	CleanPodPolicy *CleanPodPolicy `json:"cleanPodPolicy,omitempty"`
+
 	// Describes the pod that will be created when executing an MPIJob.
 	Template corev1.PodTemplateSpec `json:"template,omitempty"`
 }
 
-type MPIJobLauncherStatusType string
+// MPIReplicaType is the type for MPIReplica.
+type MPIReplicaType ReplicaType
 
-// These are valid launcher statuses of an MPIJob.
 const (
-	// LauncherActive means the MPIJob launcher is actively running.
-	LauncherActive MPIJobLauncherStatusType = "Active"
-	// LauncherSucceeded means the MPIJob launcher has succeeded.
-	LauncherSucceeded MPIJobLauncherStatusType = "Succeeded"
-	// LauncherFailed means the MPIJob launcher has failed its execution.
-	LauncherFailed MPIJobLauncherStatusType = "Failed"
+	// MPIReplicaTypeLauncher is the type for launcher replica.
+	MPIReplicaTypeLauncher MPIReplicaType = "Launcher"
+
+	// MPIReplicaTypeWorker is the type for worker replicas.
+	MPIReplicaTypeWorker MPIReplicaType = "Worker"
 )
-
-type MPIJobStatus struct {
-	// Current status of the launcher job.
-	// +optional
-	LauncherStatus MPIJobLauncherStatusType `json:"launcherStatus,omitempty"`
-
-	// The number of available worker replicas.
-	// +optional
-	WorkerReplicas int32 `json:"workerReplicas,omitempty"`
-}
