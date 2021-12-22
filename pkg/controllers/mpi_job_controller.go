@@ -416,10 +416,9 @@ func (c *MPIJobController) syncHandler(key string) error {
 		return nil
 	}
 
-	success := isSucceeded(mpiJob.Status)
-	failed := isFailed(mpiJob.Status)
+	done := isSucceeded(mpiJob.Status) || isFailed(mpiJob.Status)
 	// If the MPIJob is terminated, delete its pods according to cleanPodPolicy.
-	if success || failed {
+	if done {
 		if isCleanUpPods(mpiJob.Spec.CleanPodPolicy) {
 			// set worker StatefulSet Replicas to 0.
 			if _, err := c.getOrCreateWorkerStatefulSet(mpiJob, 0, 0); err != nil {
@@ -445,9 +444,8 @@ func (c *MPIJobController) syncHandler(key string) error {
 	}
 	// We're done if the launcher either succeeded or failed.
 	//done := launcher != nil && (launcher.Status.Succeeded == 1 || launcher.Status.Failed == 1)
-	done := launcher != nil && isJobFinished(launcher)
 
-	workerReplicas, gpusPerWorker, err := allocateGPUs(mpiJob, c.gpusPerNode)
+	workerReplicas, gpusPerWorker, err := allocateGPUs(mpiJob, c.gpusPerNode, done)
 	if err != nil {
 		runtime.HandleError(err)
 		return nil
@@ -525,7 +523,7 @@ func (c *MPIJobController) getLauncherJob(mpiJob *kubeflow.MPIJob) (*batchv1.Job
 }
 
 // allocateGPUs allocates the worker replicas and GPUs per worker.
-func allocateGPUs(mpiJob *kubeflow.MPIJob, gpusPerNode int) (workerReplicas int, gpusPerWorker int, err error) {
+func allocateGPUs(mpiJob *kubeflow.MPIJob, gpusPerNode int, done bool) (workerReplicas int, gpusPerWorker int, err error) {
 	workerReplicas = 0
 	gpusPerWorker = 0
 	err = nil
@@ -549,6 +547,10 @@ func allocateGPUs(mpiJob *kubeflow.MPIJob, gpusPerNode int) (workerReplicas int,
 				gpusPerWorker = int(gpus)
 			}
 		}
+	}
+
+	if done {
+		workerReplicas = 0
 	}
 	return workerReplicas, gpusPerWorker, err
 }
